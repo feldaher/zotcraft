@@ -1,32 +1,31 @@
-import fs from 'fs/promises';
-import path from 'path';
-
-const STATE_FILE = path.join(process.cwd(), 'state.json');
+// In-memory state for serverless environments (Vercel)
+// Note: This resets on each deployment/function restart
+// For persistent state, consider using a database or external storage
 
 export interface SyncState {
     processedKeys: string[];
     lastSync?: string;
 }
 
+// In-memory cache
+let memoryState: SyncState = {
+    processedKeys: [],
+};
+
 export async function getSyncState(): Promise<SyncState> {
-    try {
-        const data = await fs.readFile(STATE_FILE, 'utf-8');
-        return JSON.parse(data);
-    } catch (error) {
-        // If file doesn't exist, return empty state
-        return { processedKeys: [] };
+    // Always use in-memory state for serverless compatibility
+    return memoryState;
+}
+
+export async function markAsProcessed(itemKey: string): Promise<void> {
+    if (!memoryState.processedKeys.includes(itemKey)) {
+        memoryState.processedKeys.push(itemKey);
+        memoryState.lastSync = new Date().toISOString();
     }
 }
 
-export async function saveSyncState(state: SyncState): Promise<void> {
-    await fs.writeFile(STATE_FILE, JSON.stringify(state, null, 2));
-}
-
-export async function markAsProcessed(key: string): Promise<void> {
-    const state = await getSyncState();
-    if (!state.processedKeys.includes(key)) {
-        state.processedKeys.push(key);
-        state.lastSync = new Date().toISOString();
-        await saveSyncState(state);
-    }
+export async function clearSyncState(): Promise<void> {
+    memoryState = {
+        processedKeys: [],
+    };
 }

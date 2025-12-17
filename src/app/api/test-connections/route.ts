@@ -1,46 +1,46 @@
 import { NextResponse } from 'next/server';
 import { ZoteroClient } from '@/lib/zotero';
 import { CraftClient } from '@/lib/craft';
-import { ZoteroConfig } from '@/types/zotero';
-import { CraftConfig } from '@/types/craft';
 
 export async function POST(request: Request) {
     try {
         const { config } = await request.json();
-        const { zotero, craft } = config as {
-            zotero: ZoteroConfig;
-            craft: CraftConfig;
-        };
+        const { zotero, craft } = config;
 
         const result = {
             zotero: false,
             craft: false,
         };
 
-        // Test Zotero
-        try {
-            const zoteroClient = new ZoteroClient(zotero);
-            await zoteroClient.getCollectionItems(1);
-            result.zotero = true;
-        } catch (e) {
-            console.error('Zotero test failed:', e);
+        // Test Zotero - try to fetch collections
+        if (zotero?.userId && zotero?.apiKey) {
+            try {
+                const zoteroClient = new ZoteroClient(zotero);
+                await zoteroClient.getCollections();
+                result.zotero = true;
+            } catch (e: any) {
+                console.error('Zotero test failed:', e.message);
+            }
         }
 
-        // Test Craft
-        try {
-            const craftClient = new CraftClient(craft);
-            await craftClient.getCollections();
-            result.craft = true;
-        } catch (e) {
-            console.error('Craft test failed:', e);
+        // Test Craft - try to fetch collections
+        if (craft?.apiKey) {
+            try {
+                const craftClient = new CraftClient(craft);
+                await craftClient.getCollections();
+                result.craft = true;
+            } catch (e: any) {
+                console.error('Craft test failed:', e.message);
+            }
         }
 
         return NextResponse.json(result);
-    } catch (error) {
-        console.error('Test connections error:', error);
+    } catch (error: any) {
+        console.error('Test connections error:', error.message);
         return NextResponse.json(
             { error: 'Failed to test connections' },
             { status: 500 }
         );
     }
 }
+
