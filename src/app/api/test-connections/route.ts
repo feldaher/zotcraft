@@ -4,7 +4,9 @@ import { CraftClient } from '@/lib/craft';
 
 export async function POST(request: Request) {
     try {
-        const { config } = await request.json();
+        const body = await request.json();
+        // Frontend sends { config: {...} }
+        const config = body.config || body;
         const { zotero, craft } = config;
 
         const result = {
@@ -44,4 +46,3 @@ export async function POST(request: Request) {
         );
     }
 }
-
