@@ -1,13 +1,42 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useConfig, AppConfig } from '@/hooks/useConfig';
-import { ZoteroCollection } from '@/types/zotero';
-import { CraftCollection } from '@/types/craft';
+import { ZoteroConfig, ZoteroCollection } from '@/types/zotero';
+import { CraftConfig, CraftCollection } from '@/types/craft';
+
+// Simple Button Component for consistency
+const Button = ({ children, disabled, onClick, variant = 'primary', className = '' }: any) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    className={`px-4 py-2 rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${variant === 'outline'
+      ? 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+      : variant === 'danger'
+        ? 'bg-red-600 text-white hover:bg-red-700'
+        : 'bg-blue-600 text-white hover:bg-blue-700'
+      } ${className}`}
+  >
+    {children}
+  </button>
+);
 
 export default function Home() {
-  const { config, updateConfig, loaded } = useConfig();
+  const [config, setConfig] = useState<{
+    zotero: ZoteroConfig;
+    craft: CraftConfig;
+    autoSync?: { enabled: boolean; intervalMinutes: number };
+  }>({
+    zotero: { apiKey: '', userId: '', collectionId: '' },
+    craft: { apiKey: '', spaceId: '', parentDocumentId: '', targetCollectionId: '' },
+    autoSync: { enabled: false, intervalMinutes: 60 },
+  });
+
+  const [loaded, setLoaded] = useState(false); // Track if config is loaded from storage
+
+  // State Definitions
   const [logs, setLogs] = useState<Array<{ title: string; status: string; details?: string }>>([]);
+  const [syncing, setSyncing] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [testResult, setTestResult] = useState<{ zotero: boolean; craft: boolean } | null>(null);
 
@@ -16,15 +45,35 @@ export default function Home() {
   const [loadingZoteroCols, setLoadingZoteroCols] = useState(false);
   const [loadingCraftCols, setLoadingCraftCols] = useState(false);
 
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [nextSyncTime, setNextSyncTime] = useState<Date | null>(null);
+
+  // Abort controller ref to cancel sync
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('zotero2craft_config');
+    if (saved) {
+      setConfig(JSON.parse(saved));
+    }
+    setLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (loaded) {
+      localStorage.setItem('zotero2craft_config', JSON.stringify(config));
+    }
+  }, [config, loaded]);
+
   // Helper to safely update config sections
-  const handleChange = (section: keyof AppConfig, field: string, value: any) => {
-    updateConfig({
-      ...config,
+  const handleChange = (section: keyof typeof config, field: string, value: any) => {
+    setConfig((prevConfig) => ({
+      ...prevConfig,
       [section]: {
-        ...config[section],
+        ...prevConfig[section],
         [field]: value,
       },
-    });
+    }));
   };
 
   // Fetch Zotero Collections
@@ -70,7 +119,7 @@ export default function Home() {
   }, [config.craft.apiKey]);
 
   const testConnections = useCallback(async () => {
-    setLoading(true);
+    setTesting(true);
     setTestResult(null);
     try {
       const res = await fetch('/api/test-connections', {
@@ -81,38 +130,96 @@ export default function Home() {
       const data = await res.json();
       setTestResult(data);
     } finally {
-      setLoading(false);
+      setTesting(false);
     }
   }, [config]);
 
+  // Cancel sync function
+  const stopSync = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setSyncing(false);
+      setLogs((prev) => [{ title: 'Sync Stopped', status: 'warning', details: 'User cancelled the operation' }, ...prev]);
+    }
+  }, []);
+
   // Wrapped in useCallback to be stable for useEffect
   const syncNow = useCallback(async () => {
-    setLoading(true);
-    setLogs([]);
+    if (syncing) return;
+
+    // Create new abort controller
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    setSyncing(true);
+    setLogs([]); // Clear logs
+
     try {
       const res = await fetch('/api/sync-now', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config, maxItems: 50 }), // Increased from 10 to 50
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          config,
+          maxItems: 50, // Process more items
+        }),
+        signal: controller.signal,
       });
-      const data = await res.json();
-      if (data.logs) {
-        setLogs(data.logs);
-      } else if (data.error) {
-        alert('Sync failed: ' + data.error);
+
+      if (!res.ok) throw new Error(res.statusText);
+
+      // Handle streaming response
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error('No reader available');
       }
-    } catch (e) {
-      console.error(e);
-      alert('Sync request failed');
+
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const text = decoder.decode(value, { stream: true });
+        buffer += text;
+
+        const lines = buffer.split('\n');
+        // Keep the last partial line in the buffer
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const logEntry = JSON.parse(line);
+            setLogs((prev) => [logEntry, ...prev]);
+          } catch (e) {
+            console.error('Error parsing stream line:', line, e);
+          }
+        }
+      }
+
+    } catch (e: any) {
+      if (e.name === 'AbortError') {
+        console.log('Sync aborted');
+      } else {
+        console.error('Sync failed:', e);
+        setLogs((prev) => [{ title: 'Sync Failure', status: 'error', details: e.message }, ...prev]);
+      }
     } finally {
-      setLoading(false);
+      if (abortControllerRef.current === controller) {
+        setSyncing(false);
+        setLastSyncTime(new Date());
+        abortControllerRef.current = null;
+      }
     }
-  }, [config]); // Re-create when config changes
+  }, [config, syncing]); // Re-create when config changes
 
   // Auto-Sync Polling Logic (Stable Interval)
   const savedSyncNow = useRef(syncNow);
-  const [nextSyncTime, setNextSyncTime] = useState<Date | null>(null);
-  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
 
   // Keep ref updated with latest syncNow function
   useEffect(() => {
@@ -310,23 +417,49 @@ export default function Home() {
 
           <div className="space-y-6">
             {/* Actions Panel */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-              <h2 className="text-lg font-semibold mb-4">Actions</h2>
-              <div className="flex gap-4">
-                <button
-                  onClick={testConnections}
-                  disabled={loading}
-                  className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 disabled:opacity-50 text-sm font-medium"
-                >
-                  {loading ? 'Testing...' : 'Test Connections'}
-                </button>
-                <button
-                  onClick={syncNow}
-                  disabled={loading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium flex-1 shadow-sm"
-                >
-                  {loading ? 'Syncing...' : 'Sync Now'}
-                </button>
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <h2 className="text-xl font-semibold mb-4">Actions</h2>
+              <div className="space-y-4">
+                <div className="flex gap-4 items-center flex-wrap">
+                  <Button
+                    onClick={testConnections}
+                    variant="outline"
+                    disabled={testing || syncing || !config.zotero.apiKey || !config.craft.apiKey}
+                  >
+                    {testing ? 'Testing...' : 'Test Connections'}
+                  </Button>
+
+                  {syncing ? (
+                    <Button
+                      onClick={stopSync}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      Stop Sync
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={syncNow}
+                      disabled={testing || !config.zotero.apiKey || !config.craft.apiKey}
+                    >
+                      Sync Now
+                    </Button>
+                  )}
+                </div>
+
+                {testResult && (
+                  <div className="flex gap-4 text-sm">
+                    {testResult.zotero ? (
+                      <span className="text-green-600">✅ Zotero Connected</span>
+                    ) : (
+                      <span className="text-red-600">❌ Zotero Not Connected</span>
+                    )}
+                    {testResult.craft ? (
+                      <span className="text-green-600">✅ Craft Connected</span>
+                    ) : (
+                      <span className="text-red-600">❌ Craft Not Connected</span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
