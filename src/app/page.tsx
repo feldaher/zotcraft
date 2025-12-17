@@ -9,7 +9,7 @@ export default function Home() {
   const { config, updateConfig, loaded } = useConfig();
   const [logs, setLogs] = useState<Array<{ title: string; status: string; details?: string }>>([]);
   const [loading, setLoading] = useState(false);
-  const [testResult, setTestResult] = useState<{ zotero: boolean; craft: boolean; ai: boolean } | null>(null);
+  const [testResult, setTestResult] = useState<{ zotero: boolean; craft: boolean } | null>(null);
 
   const [zoteroCollections, setZoteroCollections] = useState<ZoteroCollection[]>([]);
   const [craftCollections, setCraftCollections] = useState<CraftCollection[]>([]);
@@ -161,7 +161,7 @@ export default function Home() {
               Connections
               {testResult && (
                 <span className="text-xs font-normal">
-                  (Zotero: {testResult.zotero ? '✅' : '❌'}, Craft: {testResult.craft ? '✅' : '❌'}, AI: {testResult.ai ? '✅' : '❌'})
+                  (Zotero: {testResult.zotero ? '✅' : '❌'}, Craft: {testResult.craft ? '✅' : '❌'})
                 </span>
               )}
             </h2>
@@ -268,46 +268,6 @@ export default function Home() {
                   />
                   <p className="text-xs text-gray-400 mt-1">If no collection is selected, notes will be created as sub-pages here.</p>
                 </div>
-              )}
-            </div>
-
-            {/* AI */}
-            <div className="space-y-3 pt-4 border-t">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-gray-700">AI Enrichment</h3>
-                <label className="flex items-center gap-2 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={config.ai.enabled}
-                    onChange={(e) => handleChange('ai', 'enabled', e.target.checked)}
-                  />
-                  Enable
-                </label>
-              </div>
-              {config.ai.enabled && (
-                <>
-                  <input
-                    type="text"
-                    placeholder="Endpoint (e.g. https://api.openai.com/v1)"
-                    className="w-full p-2 border rounded text-sm"
-                    value={config.ai.endpoint}
-                    onChange={(e) => handleChange('ai', 'endpoint', e.target.value)}
-                  />
-                  <input
-                    type="password"
-                    placeholder="API Key"
-                    className="w-full p-2 border rounded text-sm"
-                    value={config.ai.apiKey}
-                    onChange={(e) => handleChange('ai', 'apiKey', e.target.value)}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Model (e.g. gpt-4o)"
-                    className="w-full p-2 border rounded text-sm"
-                    value={config.ai.model}
-                    onChange={(e) => handleChange('ai', 'model', e.target.value)}
-                  />
-                </>
               )}
             </div>
 

@@ -1,20 +1,17 @@
 import { NextResponse } from 'next/server';
 import { ZoteroClient } from '@/lib/zotero';
 import { CraftClient } from '@/lib/craft';
-import { AIClient } from '@/lib/ai';
 import { getSyncState, markAsProcessed } from '@/lib/state';
 import { ZoteroConfig } from '@/types/zotero';
 import { CraftConfig } from '@/types/craft';
-import { AIConfig } from '@/types/ai';
 
 export async function POST(request: Request) {
     try {
         const body = await request.json();
         const { config, maxItems = 10, skipProcessed = true } = body;
-        const { zotero, craft, ai } = config as {
+        const { zotero, craft } = config as {
             zotero: ZoteroConfig;
             craft: CraftConfig;
-            ai: AIConfig;
         };
 
         const logs: Array<{ title: string; status: string; details?: string }> = [];
@@ -22,7 +19,6 @@ export async function POST(request: Request) {
 
         const zoteroClient = new ZoteroClient(zotero);
         const craftClient = new CraftClient(craft);
-        const aiClient = new AIClient(ai);
 
         // 1. Fetch items
         const items = await zoteroClient.getCollectionItems(maxItems);
@@ -53,15 +49,7 @@ export async function POST(request: Request) {
 
                 const abstract = item.data.abstractNote || '';
 
-                // 3. AI Summary
-                let aiSummary = '';
-                if (ai.enabled) {
-                    aiSummary = await aiClient.generateSummary(itemTitle, abstract);
-                } else {
-                    aiSummary = '_AI summary disabled._';
-                }
-
-                // 4. Transform to Markdown
+                // 3. Transform to Markdown
                 const markdownBody = `
 **Authors:** ${creators}
 **Year:** ${year}
@@ -69,8 +57,8 @@ export async function POST(request: Request) {
 **Link:** ${url}
 **Tags:** ${tagsString}
 
-## Summary
-${aiSummary}
+**Abstract:**
+${abstract || 'No abstract available.'}
 
 ## Key Ideas
 - 
@@ -85,7 +73,7 @@ ${aiSummary}
 - 
 `;
 
-                // 5. Create in Craft
+                // 4. Create in Craft
                 if (craft.targetCollectionId) {
                     await craftClient.createCollectionItem(craft.targetCollectionId, itemTitle, markdownBody);
                 } else {
@@ -93,7 +81,7 @@ ${aiSummary}
                     await craftClient.createNote(itemTitle, markdownBody, tags);
                 }
 
-                // 6. Update State
+                // 5. Update State
                 await markAsProcessed(item.key);
 
                 logs.push({ title: itemTitle, status: 'created' });
