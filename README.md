@@ -4,12 +4,10 @@
 
 ZotCraft is an integration tool that bridges your Zotero research collection with Craft's note-taking environment. 
 
-Coming soon: enrich your literature notes with AI-generated summaries and maintain a beautifully organized research workspace.
 
 ## ✨ Features
 
 - 🔄 **Automatic Synchronization** - Set it and forget it with configurable auto-sync intervals
-- 🤖 **AI Enrichment** - Generate intelligent summaries and key points from abstracts (Untested!)
 - 📂 **Collection Support** - Select specific Zotero collections and target Craft collections
 - 🏷️ **Smart Tagging** - Automatically convert Zotero tags to Craft-style hashtags (#machine_learning)
 - 🎨 **Rich Formatting** - Create structured notes with metadata, abstracts, and summaries
@@ -22,7 +20,6 @@ Coming soon: enrich your literature notes with AI-generated summaries and mainta
 
 - [Zotero](https://www.zotero.org/) account with API access
 - [Craft](https://www.craft.do/) account with API access
-- (Optional) OpenAI API key or compatible AI service for summaries
 
 ### Installation
 
@@ -58,14 +55,7 @@ npm run dev
 2. Choose your target **Collection** from the dropdown
 3. (Optional) Provide a **Parent Document ID** for sub-page fallback
 
-### 3. AI Configuration (Optional)
-
-1. Enable **AI Enrichment** in the settings
-2. Set your **API Endpoint** (default: `https://api.openai.com/v1`)
-3. Enter your **API Key**
-4. Select your preferred **Model** (e.g., `gpt-4o`, `gpt-3.5-turbo`)
-
-### 4. Auto-Sync
+### 3. Auto-Sync
 
 Enable automatic synchronization with customizable intervals:
 - 1 minute
@@ -98,16 +88,15 @@ The **Activity Log** will display real-time progress:
 ## 🎯 How It Works
 
 1. **Fetch**: Retrieves new items from your selected Zotero collection (up to 50 items)
-2. **Enrich**: Generates AI summaries if enabled
-3. **Format**: Converts metadata and tags to Craft-compatible format
-4. **Create**: Adds items to your target Craft collection or document
-5. **Track**: Updates sync state to prevent duplicates
+2. **Format**: Converts metadata and tags to Craft-compatible format
+3. **Create**: Adds items to your target Craft collection or document
+4. **Track**: Updates sync state to prevent duplicates
 
 ## 🛠️ Tech Stack
 
 - **Framework**: [Next.js 16](https://nextjs.org/) with TypeScript
 - **Styling**: Tailwind CSS
-- **APIs**: Zotero API, Craft API, OpenAI-compatible endpoints
+- **APIs**: Zotero API, Craft API
 - **State**: localStorage + server-side JSON
 
 ## 📝 Configuration Storage
