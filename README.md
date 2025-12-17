@@ -1,6 +1,6 @@
 # ZotCraft 📚✨
 
-> Automatically sync your Zotero research library to Craft with AI-powered summaries
+> Automatically sync your Zotero research library to Craft Docs with AI-powered summaries
 
 ZotCraft is an integration tool that bridges your Zotero research collection with Craft's note-taking environment. 
 
