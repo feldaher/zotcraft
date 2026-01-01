@@ -15,7 +15,7 @@ export interface AppConfig {
 
 const DEFAULT_CONFIG: AppConfig = {
     zotero: { userId: '', apiKey: '', collectionId: '' },
-    craft: { apiKey: '', parentDocumentId: '', targetCollectionId: '' },
+    craft: { linkId: '', apiKey: '', parentDocumentId: '', targetCollectionId: '' },
     autoSync: { enabled: false, intervalMinutes: 5 },
 };
 

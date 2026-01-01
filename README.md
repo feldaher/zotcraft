@@ -51,9 +51,11 @@ npm run dev
 
 ### 2. Craft Setup
 
-1. Generate your **API Key**: Craft → Imagine → Create new document API (you need a document with a Collection block first)
-2. Choose your target **Collection** from the dropdown
-3. (Optional) Provide a **Parent Document ID** for sub-page fallback
+1. Create a **Document API**: In Craft, go to Imagine → Create new document API (you need a document with a Collection block first)
+2. **Copy your API URL**: It looks like `https://connect.craft.do/links/YOUR_LINK_ID/api/v1`
+3. **Paste it** in the Craft configuration field - the Link ID will be automatically extracted
+4. Choose your target **Collection** from the dropdown
+5. (Optional) Provide a **Parent Document ID** for sub-page fallback
 
 ### 3. Auto-Sync
 

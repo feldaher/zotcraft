@@ -1,17 +1,17 @@
 import { CraftConfig, CraftBlock, CraftResponse } from '@/types/craft';
 
-const CRAFT_API_BASE = 'https://connect.craft.do/links/COCqm12afk6/api/v1'; // Using the specific endpoint from docs
-
 export class CraftClient {
     private config: CraftConfig;
+    private apiBase: string;
 
     constructor(config: CraftConfig) {
         this.config = config;
+        // The link ID in the URL IS the authentication - no separate bearer token needed
+        this.apiBase = `https://connect.craft.do/links/${config.linkId}/api/v1`;
     }
 
     private getHeaders() {
         return {
-            'Authorization': `Bearer ${this.config.apiKey}`,
             'Content-Type': 'application/json',
         };
     }
@@ -19,7 +19,7 @@ export class CraftClient {
     async testConnection(): Promise<boolean> {
         try {
             // Fetch documents list to verify access
-            const response = await fetch(`${CRAFT_API_BASE}/documents?limit=1`, {
+            const response = await fetch(`${this.apiBase}/documents?limit=1`, {
                 headers: this.getHeaders(),
             });
             return response.ok;
@@ -51,7 +51,7 @@ export class CraftClient {
                 ]
             };
 
-            const response = await fetch(`${CRAFT_API_BASE}/blocks`, {
+            const response = await fetch(`${this.apiBase}/blocks`, {
                 method: 'POST',
                 headers: this.getHeaders(),
                 body: JSON.stringify({
@@ -84,7 +84,7 @@ export class CraftClient {
 
     async getCollections(): Promise<import('@/types/craft').CraftCollection[]> {
         try {
-            const response = await fetch(`${CRAFT_API_BASE}/collections`, {
+            const response = await fetch(`${this.apiBase}/collections`, {
                 headers: this.getHeaders(),
             });
 
@@ -105,7 +105,7 @@ export class CraftClient {
             // Check in collection if collectionId provided, otherwise check in parent document
             if (collectionId) {
                 // Get items from collection
-                const response = await fetch(`${CRAFT_API_BASE}/collections/${collectionId}/items`, {
+                const response = await fetch(`${this.apiBase}/collections/${collectionId}/items`, {
                     headers: this.getHeaders(),
                 });
 
@@ -121,7 +121,7 @@ export class CraftClient {
                 return items.some((item: any) => item.title?.trim() === title.trim());
             } else if (this.config.parentDocumentId) {
                 // Get blocks from parent document
-                const response = await fetch(`${CRAFT_API_BASE}/documents/${this.config.parentDocumentId}`, {
+                const response = await fetch(`${this.apiBase}/documents/${this.config.parentDocumentId}`, {
                     headers: this.getHeaders(),
                 });
 
@@ -150,7 +150,7 @@ export class CraftClient {
         try {
             // Fetch schema with default format (json-schema-items is default but we want the edit schema structure to see display names)
             // Actually the docs say format='schema' returns structure with names/keys
-            const response = await fetch(`${CRAFT_API_BASE}/collections/${collectionId}/schema?format=schema`, {
+            const response = await fetch(`${this.apiBase}/collections/${collectionId}/schema?format=schema`, {
                 headers: this.getHeaders(),
             });
 
@@ -174,7 +174,7 @@ export class CraftClient {
     ): Promise<string> {
         try {
             // Step 1: Create the item in the collection
-            const createResponse = await fetch(`${CRAFT_API_BASE}/collections/${collectionId}/items`, {
+            const createResponse = await fetch(`${this.apiBase}/collections/${collectionId}/items`, {
                 method: 'POST',
                 headers: this.getHeaders(),
                 body: JSON.stringify({
@@ -200,7 +200,7 @@ export class CraftClient {
             }
 
             // Step 2: Add content to the item
-            const contentResponse = await fetch(`${CRAFT_API_BASE}/blocks`, {
+            const contentResponse = await fetch(`${this.apiBase}/blocks`, {
                 method: 'POST',
                 headers: this.getHeaders(),
                 body: JSON.stringify({

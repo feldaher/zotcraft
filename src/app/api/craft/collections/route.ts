@@ -7,9 +7,9 @@ export async function POST(request: Request) {
         const body = await request.json();
         const config = body as CraftConfig;
 
-        if (!config.apiKey) {
+        if (!config.linkId) {
             return NextResponse.json(
-                { error: 'Missing Craft credentials' },
+                { error: 'Missing Craft Link ID' },
                 { status: 400 }
             );
         }
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
         // but for fetching collections we don't strictly need it if we fetch all collections.
         // However, the client constructor needs it.
         const client = new CraftClient({
-            apiKey: config.apiKey,
+            linkId: config.linkId,
             parentDocumentId: config.parentDocumentId || 'dummy'
         });
 

@@ -27,7 +27,7 @@ export default function Home() {
     autoSync?: { enabled: boolean; intervalMinutes: number };
   }>({
     zotero: { apiKey: '', userId: '', collectionId: '' },
-    craft: { apiKey: '', spaceId: '', parentDocumentId: '', targetCollectionId: '' },
+    craft: { linkId: '', apiKey: '', spaceId: '', parentDocumentId: '', targetCollectionId: '' },
     autoSync: { enabled: false, intervalMinutes: 60 },
   });
 
@@ -99,7 +99,7 @@ export default function Home() {
 
   // Fetch Craft Collections
   const fetchCraftCollections = useCallback(async () => {
-    if (!config.craft.apiKey) return;
+    if (!config.craft.linkId) return;
     setLoadingCraftCols(true);
     try {
       const res = await fetch('/api/craft/collections', {
@@ -116,7 +116,7 @@ export default function Home() {
     } finally {
       setLoadingCraftCols(false);
     }
-  }, [config.craft.apiKey]);
+  }, [config.craft.linkId]);
 
   const testConnections = useCallback(async () => {
     setTesting(true);
@@ -259,7 +259,7 @@ export default function Home() {
         <header className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">Zotero to Craft Sync</h1>
           <p className="text-gray-500 mt-2">
-            Automated literature notes creation with AI summarization. Designed for the{' '}
+            Automated literature notes creationq. Designed for the{' '}
             <a href="https://donkeys-melt-ig1.craft.me/Zotcraft-template" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 hover:underline transition-colors">
               ZotCraft Template
             </a>.
@@ -326,14 +326,24 @@ export default function Home() {
             {/* Craft */}
             <div className="space-y-3 pt-4 border-t">
               <h3 className="text-sm font-medium text-gray-700">Craft</h3>
-              <input
-                type="password"
-                placeholder="API Key"
-                className="w-full p-2 border rounded text-sm"
-                value={config.craft.apiKey}
-                onChange={(e) => handleChange('craft', 'apiKey', e.target.value)}
-                onBlur={fetchCraftCollections}
-              />
+              <div>
+                <input
+                  type="text"
+                  placeholder="Paste your Craft API URL"
+                  className="w-full p-2 border rounded text-sm"
+                  value={config.craft.linkId}
+                  onChange={(e) => {
+                    // Auto-extract link ID if user pastes full URL
+                    const value = e.target.value;
+                    const match = value.match(/links\/([^\/]+)/);
+                    handleChange('craft', 'linkId', match ? match[1] : value);
+                  }}
+                  onBlur={fetchCraftCollections}
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Paste your full API URL (e.g. connect.craft.do/links/<strong>ABC123</strong>/api/v1) or just the Link ID
+                </p>
+              </div>
 
               {/* Collection Dropdown */}
               <div className="flex gap-2">
@@ -424,7 +434,7 @@ export default function Home() {
                   <Button
                     onClick={testConnections}
                     variant="outline"
-                    disabled={testing || syncing || !config.zotero.apiKey || !config.craft.apiKey}
+                    disabled={testing || syncing || !config.zotero.apiKey || !config.craft.linkId}
                   >
                     {testing ? 'Testing...' : 'Test Connections'}
                   </Button>
@@ -439,7 +449,7 @@ export default function Home() {
                   ) : (
                     <Button
                       onClick={syncNow}
-                      disabled={testing || !config.zotero.apiKey || !config.craft.apiKey}
+                      disabled={testing || !config.zotero.apiKey || !config.craft.linkId}
                     >
                       Sync Now
                     </Button>
